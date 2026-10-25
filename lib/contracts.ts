@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { engineeringSchema } from "./engineering";
 const num = z.number().finite().min(-2000).max(2000),
   positive = z.number().finite().gt(0).max(2000),
   point = z.tuple([num, num, num]);
@@ -78,6 +79,10 @@ export const specSchema = z
           type: z.enum(["fixed", "revolute", "prismatic"]),
           components: z.tuple([z.string(), z.string()]),
           description: z.string().max(500),
+          axis: point.nullable().optional(),
+          origin: point.nullable().optional(),
+          limits: z.tuple([num, num]).nullable().optional(),
+          home: num.optional(),
         }),
       )
       .max(30)
@@ -87,6 +92,7 @@ export const specSchema = z
       bounds: z.tuple([positive, positive, positive]).nullable(),
       tolerance: z.number().finite().gt(0).max(10),
     }),
+    engineering: engineeringSchema.nullable().optional(),
   })
   .refine(
     (v) => v.operations.length > 0 || v.components.length > 0,

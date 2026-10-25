@@ -2,3 +2,9 @@ cadquery==2.8.0
 pydantic==2.14.1
 httpx==0.28.1
 pytest==9.1.1
+gmsh==4.15.2
+reportlab==5.1.0
+svglib==2.3.2
+numpy==2.5.4
+scipy==1.18.1
+pypdf==6.21.2

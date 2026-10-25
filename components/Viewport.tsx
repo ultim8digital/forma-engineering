@@ -13,6 +13,8 @@ export type MeshData = {
     center: number[];
   }[];
   bounds: number[];
+  scalars?: number[];
+  scalarMax?: number;
 };
 export default function Viewport({
   data,
@@ -21,6 +23,7 @@ export default function Viewport({
   exploded,
   wireframe,
   view,
+  pose,
 }: {
   data: MeshData | null;
   selected: string;
@@ -28,15 +31,16 @@ export default function Viewport({
   exploded: boolean;
   wireframe: boolean;
   view: string;
+  pose?: Record<string, number[]>;
 }) {
   const root = useRef<HTMLDivElement>(null),
     items = useRef<THREE.Mesh[]>([]),
     select = useRef(onSelect),
     controlsRef = useRef<OrbitControls | null>(null),
     cameraRef = useRef<THREE.PerspectiveCamera | null>(null),
-    flags = useRef({ exploded, wireframe, selected });
+    flags = useRef({ exploded, wireframe, selected, pose });
   select.current = onSelect;
-  flags.current = { exploded, wireframe, selected };
+  flags.current = { exploded, wireframe, selected, pose };
   useEffect(() => {
     if (!root.current || !data) return;
     const el = root.current,
@@ -72,13 +76,35 @@ export default function Viewport({
     const colors = [0x6983a0, 0x4e8f91, 0xa9b1be, 0xc39664, 0x877aa0];
     for (const [i, g] of data.groups.entries()) {
       const pos: number[] = [];
+      const vertexColors: number[] = [];
       for (const triangle of data.triangles.slice(g.start, g.start + g.count))
-        for (const idx of triangle) pos.push(...data.vertices[idx]);
+        for (const idx of triangle) {
+          pos.push(...data.vertices[idx]);
+          if (data.scalars) {
+            const color = new THREE.Color().setHSL(
+              0.67 *
+                (1 -
+                  Math.min(
+                    1,
+                    data.scalars[idx] / Math.max(data.scalarMax || 1, 1e-10),
+                  )),
+              0.82,
+              0.5,
+            );
+            vertexColors.push(color.r, color.g, color.b);
+          }
+        }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
       geo.computeVertexNormals();
+      if (vertexColors.length)
+        geo.setAttribute(
+          "color",
+          new THREE.Float32BufferAttribute(vertexColors, 3),
+        );
       const material = new THREE.MeshStandardMaterial({
-        color: colors[i % colors.length],
+        color: data.scalars ? 0xffffff : colors[i % colors.length],
+        vertexColors: !!data.scalars,
         roughness: 0.38,
         metalness: 0.32,
         flatShading: false,
@@ -167,7 +193,13 @@ export default function Viewport({
             target.set(Math.cos(i * 2.39996), Math.sin(i * 2.39996), 0.6);
           target.normalize().multiplyScalar(extent * (0.65 + 0.12 * (i % 3)));
         }
-        m.position.lerp(target, 0.12);
+        if (f.pose?.[m.userData.id]) {
+          m.matrixAutoUpdate = false;
+          m.matrix.fromArray(f.pose[m.userData.id]).transpose();
+        } else {
+          m.matrixAutoUpdate = true;
+          m.position.lerp(target, 0.12);
+        }
       }
       controls.update();
       renderer.render(scene, camera);

@@ -1,0 +1,1 @@
+ALTER TABLE `nodes` ADD `refresh_requested_at` integer DEFAULT 0 NOT NULL;

@@ -4,8 +4,9 @@ from pathlib import Path
 import httpx
 from cad import Spec
 ROOT=Path(__file__).resolve().parent.parent
-FILES=['model.step','model.stl','mesh.json','spec.json','report.json','source.py','drawing.svg','parts.zip','bom.csv']
+FILES=['model.step','model.stl','mesh.json','spec.json','report.json','source.py','drawing.svg','parts.zip','bom.csv','engineering.json','strength-mesh.json','drawings.pdf','drawings.zip']
 SYSTEM='''Ты инженерный CAD-планировщик FORMA. Верни только один JSON по приложенной схеме. Не вызывай инструменты, не читай файлы, не выполняй команды. Единицы: мм, правосторонняя система XYZ. Box at — нижний угол, cylinder at — центр начального сечения, height вдоль положительной axis. extrude points в координатах плоскости, затем at. Компоненты строятся локально, повороты XYZ в градусах вокруг начала, затем перенос at. Одна физическая деталь = один компонент и одно связное тело. quantity всегда 1; повторы моделируй отдельными компонентами. Сборку не объединять в одно тело. Укажи материал и оборудование каждого компонента. Требуемые зазоры должны присутствовать в геометрии. Вся геометрия только через доступные операции: box/cylinder/extrude/fillet/chamfer. Не изображай резьбы, зубчатые профили, подшипники и другие точные элементы упрощёнными цилиндрами без явного перечисления в missing_geometry. Если геометрия не выражается этими операциями — перечисли недостающие элементы в missing_geometry, не заявляй готовность. Не выдумывай результаты FEA, кинематики и CAM. Неизвестные размеры и нагрузки явно перечисляй в assumptions. requirements.bounds = ожидаемые габариты XYZ либо null, если не заданы; expected_solids = число физических тел. tolerance — допуск проверки геометрии, а не производственный допуск. Для сложной задачи предпочитай честный частичный результат с missing_geometry. Максимум 24 компонента и 300 операций суммарно. Все поля компонентов обязательны.'''
+SYSTEM+=' Свойства E, nu, предел текучести, источник материала, нагрузки, закрепления и допуски для engineering не придумывай. Если пользователь не задал эти физические исходные данные, strength и motion оставь null, допуски null. Инженерные результаты вычисляются программой, не тобой. Оси шарниров и их точки задаются в исходной системе сборки. Первая деталь в замкнутом механизме — неподвижное основание. Исходные engineering из предыдущей спецификации сохраняй без изменения.'
 
 def load_env(path):
     if path.exists():
@@ -61,9 +62,11 @@ def generate(provider,model,prompt,previous,feedback):
 class Node:
     def __init__(self,url):
         headers={'Authorization':'Bearer '+os.environ['FORMA_WORKER_TOKEN']}
-        if os.environ.get('FORMA_SITES_TOKEN'):headers['OAI-Sites-Authorization']='Bearer '+os.environ['FORMA_SITES_TOKEN']
+        if os.environ.get('FORMA_SITES_TOKEN') and url.rstrip('/')==os.environ.get('FORMA_URL','').rstrip('/'):
+            headers['OAI-Sites-Authorization']='Bearer '+os.environ['FORMA_SITES_TOKEN']
         self.client=httpx.Client(base_url=url.rstrip('/'),headers=headers,timeout=60,follow_redirects=False)
         self.id=hashlib.sha256(platform.node().encode()).hexdigest()[:16]
+        self.catalog=None;self.catalog_at=0;self.catalog_lock=threading.Lock()
     def request(self,method,path,**kwargs):
         r=self.client.request(method,'/api/'+path,**kwargs)
         if r.is_redirect:raise RuntimeError('Сервис требует вход: настрой FORMA_SITES_TOKEN для приватного сайта.')
@@ -71,7 +74,14 @@ class Node:
     def heartbeat(self):
         providers=[p for p in ['codex','claude'] if shutil.which(p)]
         if os.environ.get('FORMA_LLM_BASE_URL'):providers.append('compatible')
-        self.request('POST','worker/heartbeat',json={'id':self.id,'name':platform.node(),'capabilities':{'providers':providers,'cad':'CadQuery '+__import__('cadquery').__version__}})
+        state=self.request('POST','worker/heartbeat',json={'id':self.id,'name':platform.node(),'capabilities':{'providers':providers,'cad':'CadQuery '+__import__('cadquery').__version__,'engineering_version':2,'catalog':self.catalog}})
+        if state.get('refresh_models'):threading.Thread(target=self.refresh_catalog,daemon=True).start()
+    def refresh_catalog(self):
+        if not self.catalog_lock.acquire(blocking=False):return
+        try:
+            from models import discover_models
+            self.catalog=discover_models();self.catalog_at=time.monotonic()
+        finally:self.catalog_lock.release()
     def process(self,job):
         started=time.monotonic();lease={'X-Job-Lease':job['lease']};base='worker/jobs/'+job['id'];feedback='';spec=None;report=None
         try:
@@ -80,11 +90,17 @@ class Node:
             for attempt in range(1,count+1):
                 self.heartbeat();self.request('POST',base+'/stage',headers=lease,json={'stage':f'Проектирование · попытка {attempt}' if job['provider']!='manual' else 'Построение по параметрам'})
                 try:
+                    if job['provider']!='manual' and self.catalog and not any(m['id']==job['model'] for m in self.catalog['models'].get(job['provider'],[])):
+                        raise ValueError('Выбранная модель отсутствует в текущем каталоге провайдера. Обнови список моделей.')
                     spec=Spec.model_validate(previous).model_dump() if job['provider']=='manual' else generate(job['provider'],job['model'],job['prompt'],previous,feedback)
+                    # Engineering boundary conditions and tolerances are owner inputs.
+                    # A design model may not rewrite them to make its checks turn green.
+                    if previous and previous.get('engineering') is not None:
+                        spec['engineering']=previous['engineering']
                     target=ROOT/'worker-data'/job['id']/str(attempt);target.mkdir(parents=True,exist_ok=True);(target/'input.json').write_text(json.dumps(spec,ensure_ascii=False))
                     self.request('POST',base+'/stage',headers=lease,json={'stage':'Построение B-Rep и проверка сборки'})
                     # Kernel has a process-level timeout. No generated Python is executed.
-                    run_command([sys.executable,str(Path(__file__).with_name('cad.py')),str(target/'input.json'),str(target)],'',str(ROOT),timeout=120)
+                    run_command([sys.executable,str(Path(__file__).with_name('cad.py')),str(target/'input.json'),str(target)],'',str(ROOT),timeout=300)
                     report=json.loads((target/'report.json').read_text())
                     if report['passed'] or attempt==count:break
                     feedback=json.dumps([c for c in report['checks'] if not c['passed']],ensure_ascii=False);previous=spec
@@ -95,6 +111,9 @@ class Node:
             self.request('POST',base+'/stage',headers=lease,json={'stage':'Сохранение моделей и спецификации'})
             for name in FILES:self.request('PUT',base+'/artifacts/'+name,headers=lease,content=(target/name).read_bytes())
             self.request('POST',base+'/finish',headers=lease,json={'spec':spec,'report':report,'provenance':{'provider':job['provider'],'model':job['model'] if job['provider']!='manual' else 'deterministic-cad','attempts':attempt,'elapsed_seconds':round(time.monotonic()-started,2)}})
+            if job['provider']!='manual' and self.catalog:
+                for model in self.catalog['models'].get(job['provider'],[]):
+                    if model['id']==job['model']:model['availability']='verified';model['verified_at']=int(time.time()*1000)
             print(f"Finished {job['id']}: geometry passed={report['passed']}",flush=True)
         except Exception as e:
             print(f"Failed {job['id']}: {type(e).__name__}: {str(e)[:300]}",flush=True)
@@ -104,10 +123,13 @@ class Node:
         print('FORMA node connected to '+str(self.client.base_url),flush=True)
         def pulse():
             while True:
-                try:self.heartbeat()
+                try:
+                    self.heartbeat()
+                    if time.monotonic()-self.catalog_at>300:threading.Thread(target=self.refresh_catalog,daemon=True).start()
                 except Exception:pass
                 time.sleep(10)
         if not once:threading.Thread(target=pulse,daemon=True).start()
+        else:self.refresh_catalog()
         while True:
             try:
                 self.heartbeat();job=self.request('POST','worker/claim',json={}).get('job')

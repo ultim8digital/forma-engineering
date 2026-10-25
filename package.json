@@ -1,6 +1,6 @@
 {
   "name": "forma-engineering",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -14,7 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "test:cad": ".venv/bin/python -m pytest tests/test_cad.py -q",
     "node:run": ".venv/bin/python worker-node/runner.py",
-    "mcp": ".venv/bin/python worker-node/mcp_server.py"
+    "mcp": ".venv/bin/python worker-node/mcp_server.py",
+    "test:engineering": ".venv/bin/python -m pytest tests/test_cad.py tests/test_engineering.py -q"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

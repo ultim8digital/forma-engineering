@@ -1,0 +1,172 @@
+{
+  "schema_version": "1.0",
+  "name": "Контрольный пример / четырёхзвенник",
+  "units": "mm",
+  "material": "Учебный материал",
+  "process": "Кинематическая схема",
+  "description": "Параллелограмм: основание и шатун по 40 мм, два рычага по 20 мм. Исходный угол 60°, ход ведущего рычага +30°.",
+  "assumptions": [
+    "Контрольный пример, созданный вручную.",
+    "Шарниры идеальные. Оси, подшипники и крепёж не спроектированы.",
+    "Первая деталь является неподвижным основанием."
+  ],
+  "missing_geometry": ["Оси и крепёж шарниров не разработаны"],
+  "operations": [],
+  "components": [
+    {
+      "id": "ground",
+      "name": "Основание",
+      "material": "Учебный материал",
+      "process": "Схематическая пластина",
+      "operations": [
+        {
+          "type": "box",
+          "id": "Основание",
+          "mode": "add",
+          "size": [50, 10, 2],
+          "at": [-5, -5, -4]
+        }
+      ],
+      "at": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "quantity": 1
+    },
+    {
+      "id": "crank",
+      "name": "Ведущий рычаг",
+      "material": "Учебный материал",
+      "process": "Схематическая пластина",
+      "operations": [
+        {
+          "type": "extrude",
+          "id": "Звено 20 мм",
+          "mode": "add",
+          "points": [
+            [-1.299038105676658, 0.75],
+            [1.299038105676658, -0.75],
+            [11.299038105676658, 16.570508075688775],
+            [8.700961894323342, 18.070508075688775]
+          ],
+          "plane": "XY",
+          "distance": 2,
+          "at": [0, 0, 0]
+        }
+      ],
+      "at": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "quantity": 1
+    },
+    {
+      "id": "coupler",
+      "name": "Шатун",
+      "material": "Учебный материал",
+      "process": "Схематическая пластина",
+      "operations": [
+        {
+          "type": "box",
+          "id": "Шатун",
+          "mode": "add",
+          "size": [40, 3, 2],
+          "at": [10, 15.820508075688775, 3]
+        }
+      ],
+      "at": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "quantity": 1
+    },
+    {
+      "id": "rocker",
+      "name": "Ведомый рычаг",
+      "material": "Учебный материал",
+      "process": "Схематическая пластина",
+      "operations": [
+        {
+          "type": "extrude",
+          "id": "Звено 20 мм",
+          "mode": "add",
+          "points": [
+            [38.70096189432334, 0.75],
+            [41.29903810567666, -0.75],
+            [51.29903810567666, 16.570508075688775],
+            [48.70096189432334, 18.070508075688775]
+          ],
+          "plane": "XY",
+          "distance": 2,
+          "at": [0, 0, 6]
+        }
+      ],
+      "at": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "quantity": 1
+    }
+  ],
+  "joints": [
+    {
+      "name": "Вход",
+      "type": "revolute",
+      "components": ["ground", "crank"],
+      "description": "Идеальная ось шарнира",
+      "axis": [0, 0, 1],
+      "origin": [0, 0, 0],
+      "home": 0,
+      "limits": [-180, 180]
+    },
+    {
+      "name": "Левый шарнир",
+      "type": "revolute",
+      "components": ["crank", "coupler"],
+      "description": "Идеальная ось шарнира",
+      "axis": [0, 0, 1],
+      "origin": [10, 17.320508075688775, 0],
+      "home": 0,
+      "limits": [-180, 180]
+    },
+    {
+      "name": "Правый шарнир",
+      "type": "revolute",
+      "components": ["coupler", "rocker"],
+      "description": "Идеальная ось шарнира",
+      "axis": [0, 0, 1],
+      "origin": [50, 17.320508075688775, 0],
+      "home": 0,
+      "limits": [-180, 180]
+    },
+    {
+      "name": "Замыкание",
+      "type": "revolute",
+      "components": ["rocker", "ground"],
+      "description": "Идеальная ось шарнира",
+      "axis": [0, 0, 1],
+      "origin": [40, 0, 0],
+      "home": 0,
+      "limits": [-180, 180]
+    }
+  ],
+  "requirements": {
+    "expected_solids": 4,
+    "bounds": null,
+    "tolerance": 0.01
+  },
+  "engineering": {
+    "strength": null,
+    "motion": {
+      "drivers": [
+        {
+          "joint_name": "Вход",
+          "start": 0,
+          "end": 30
+        }
+      ],
+      "samples": 21,
+      "clearance_mm": 0
+    },
+    "manufacturing": {
+      "general_tolerance_mm": 0.2,
+      "surface_roughness_ra_um": null,
+      "dimensions": [],
+      "notes": [
+        "Схема для проверки кинематического солвера. Шарниры требуют конструктивной разработки."
+      ]
+    }
+  }
+}

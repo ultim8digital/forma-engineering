@@ -53,10 +53,9 @@
     }
   ],
   "warnings": [
-    "Прочность, усталость и ресурс не рассчитаны.",
+    "Геометрическая проверка не является разрешением на изготовление.",
     "Минимальная толщина стенки и доступ инструмента не проверены.",
-    "Посадки, GD&T, шероховатость и компенсация процесса требуют проверки.",
-    "Связи заданы как метаданные. Движение и столкновения по траектории не рассчитаны.",
+    "Усталость, GD&T и компенсация процесса требуют отдельной проверки.",
     "Учебная сборка, созданная вручную. Нагрузки и ресурс не заданы.",
     "Ось без стопоров: способ её фиксации требует проектирования.",
     "Зазоры номинальные; компенсация конкретного принтера не учтена."
@@ -139,5 +138,287 @@
       ]
     }
   ],
-  "verification_scope": "geometry_only"
+  "verification_scope": "geometry_and_explicit_engineering_checks",
+  "engineering": {
+    "strength": {
+      "status": "not_configured"
+    },
+    "motion": {
+      "status": "not_configured"
+    },
+    "drawings": {
+      "status": "needs_review",
+      "parts": [
+        {
+          "id": "fork",
+          "name": "01 · Вилка",
+          "status": "missing_tolerances",
+          "dimensions": [
+            {
+              "feature": "bbox_x",
+              "operation_id": null,
+              "nominal_mm": 64.0,
+              "actual_mm": 64.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_y",
+              "operation_id": null,
+              "nominal_mm": 44.0,
+              "actual_mm": 44.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_z",
+              "operation_id": null,
+              "nominal_mm": 36.0,
+              "actual_mm": 36.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Посадка оси",
+              "nominal_mm": 8.6,
+              "actual_mm": 8.6,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Посадка оси",
+              "nominal_mm": 22.0,
+              "actual_mm": 22.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_z",
+              "operation_id": "Посадка оси",
+              "nominal_mm": 24.0,
+              "actual_mm": 24.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Крепление 1",
+              "nominal_mm": 5.4,
+              "actual_mm": 5.4,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_x",
+              "operation_id": "Крепление 1",
+              "nominal_mm": 7.0,
+              "actual_mm": 7.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Крепление 1",
+              "nominal_mm": 7.0,
+              "actual_mm": 7.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Крепление 2",
+              "nominal_mm": 5.4,
+              "actual_mm": 5.4,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_x",
+              "operation_id": "Крепление 2",
+              "nominal_mm": 57.0,
+              "actual_mm": 57.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Крепление 2",
+              "nominal_mm": 37.0,
+              "actual_mm": 37.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            }
+          ]
+        },
+        {
+          "id": "roller",
+          "name": "02 · Ролик",
+          "status": "missing_tolerances",
+          "dimensions": [
+            {
+              "feature": "bbox_x",
+              "operation_id": null,
+              "nominal_mm": 30.0,
+              "actual_mm": 30.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_y",
+              "operation_id": null,
+              "nominal_mm": 24.0,
+              "actual_mm": 24.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_z",
+              "operation_id": null,
+              "nominal_mm": 24.0,
+              "actual_mm": 24.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Тело ролика",
+              "nominal_mm": 24.0,
+              "actual_mm": 24.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Тело ролика",
+              "nominal_mm": 12.0,
+              "actual_mm": 12.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_z",
+              "operation_id": "Тело ролика",
+              "nominal_mm": 12.0,
+              "actual_mm": 12.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Отверстие",
+              "nominal_mm": 8.6,
+              "actual_mm": 8.6,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Отверстие",
+              "nominal_mm": 12.0,
+              "actual_mm": 12.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_z",
+              "operation_id": "Отверстие",
+              "nominal_mm": 12.0,
+              "actual_mm": 12.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            }
+          ]
+        },
+        {
+          "id": "axle",
+          "name": "03 · Ось Ø8",
+          "status": "missing_tolerances",
+          "dimensions": [
+            {
+              "feature": "bbox_x",
+              "operation_id": null,
+              "nominal_mm": 50.0,
+              "actual_mm": 50.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_y",
+              "operation_id": null,
+              "nominal_mm": 8.0,
+              "actual_mm": 8.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "bbox_z",
+              "operation_id": null,
+              "nominal_mm": 8.0,
+              "actual_mm": 8.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "diameter",
+              "operation_id": "Ось",
+              "nominal_mm": 8.0,
+              "actual_mm": 8.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_y",
+              "operation_id": "Ось",
+              "nominal_mm": 4.0,
+              "actual_mm": 4.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            },
+            {
+              "feature": "location_z",
+              "operation_id": "Ось",
+              "nominal_mm": 4.0,
+              "actual_mm": 4.0,
+              "lower_deviation_mm": null,
+              "upper_deviation_mm": null,
+              "passed": null
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "Чертежи имеют статус DRAFT. GD&T, базирование, технологичность, доступ инструмента и фактическая точность изготовления требуют инженерного согласования.",
+        "Кривые DXF аппроксимированы с отклонением 0,01 мм; для точной геометрии используй STEP."
+      ]
+    }
+  },
+  "manufacturing_release": "draft_requires_engineer_review"
 }

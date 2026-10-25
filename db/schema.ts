@@ -44,6 +44,7 @@ export const nodes = sqliteTable("nodes", {
   name: text("name").notNull(),
   capabilities: text("capabilities").notNull(),
   seenAt: integer("seen_at").notNull(),
+  refreshRequestedAt: integer("refresh_requested_at").notNull().default(0),
 });
 export const apiKeys = sqliteTable("api_keys", {
   hash: text("hash").primaryKey(),

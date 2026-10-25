@@ -39,6 +39,8 @@ import {
 import type { MeshData } from "./Viewport";
 const Viewport = lazy(() => import("./Viewport"));
 import { SAMPLE, specSchema, type PartSpec } from "@/lib/contracts";
+import type { EngineeringResults, ModelCatalog } from "@/lib/engineering";
+import EngineeringPanel from "./EngineeringPanel";
 type CheckResult = { name: string; passed: boolean; detail: string };
 type Report = {
   passed: boolean;
@@ -116,12 +118,18 @@ export default function Studio() {
     [newDialog, setNewDialog] = useState(false),
     [newTitle, setNewTitle] = useState(""),
     [inspector, setInspector] = useState("parameters");
+  const [engineeringResults, setEngineeringResults] =
+    useState<EngineeringResults | null>(null);
+  const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
+  const revisionRequest = useRef(0);
   const file = useRef<HTMLInputElement>(null),
     activeRef = useRef<string | null>(null),
     revisionRef = useRef<string | null>(null),
     projectRef = useRef<Project | null>(null);
   projectRef.current = project;
   const node = nodes.find((n) => Date.now() - n.seen_at < 45000);
+  const availableModels = catalog?.models[provider] || [];
+  const selectedModel = availableModels.find((m) => m.id === model);
   const active = jobs.find((j) => ["queued", "running"].includes(j.status));
   const fail = jobs[0]?.status === "failed" ? jobs[0] : undefined;
   const note = (text: string) => {
@@ -129,15 +137,26 @@ export default function Studio() {
     setTimeout(() => setToast(""), 3500);
   };
   const loadRevision = useCallback(async (rev: Revision) => {
+    const requestId = ++revisionRequest.current;
     const s = JSON.parse(rev.spec);
     setSpec(s);
     setReport(JSON.parse(rev.report));
     setRevision(rev.id);
     setDirty(false);
     setSelected(s.components[0]?.id || "body");
+    setEngineeringResults(null);
     const m = await fetch("/api/artifacts/" + rev.id + "/mesh.json");
     if (!m.ok) throw new Error("Не удалось загрузить геометрию");
-    setMesh((await m.json()) as MeshData);
+    const loadedMesh = (await m.json()) as MeshData;
+    if (requestId !== revisionRequest.current) return;
+    setMesh(loadedMesh);
+    const engineering = await fetch(
+      "/api/artifacts/" + rev.id + "/engineering.json",
+    );
+    if (engineering.ok) {
+      const loaded = (await engineering.json()) as EngineeringResults;
+      if (requestId === revisionRequest.current) setEngineeringResults(loaded);
+    }
   }, []);
   const refreshProject = useCallback(
     async (id: string) => {
@@ -160,11 +179,38 @@ export default function Studio() {
     [loadRevision],
   );
   const refresh = useCallback(async () => {
-    const data = await api<WorkspaceData>("state");
+    const [data, models] = await Promise.all([
+      api<WorkspaceData>("state"),
+      api<ModelCatalog>("models").catch(() => null),
+    ]);
     setProjects(data.projects);
     setNodes(data.nodes);
+    setCatalog(models);
     if (activeRef.current) await refreshProject(activeRef.current);
   }, [refreshProject]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("forma-model-v1") || "null",
+      );
+      if (
+        saved &&
+        ["codex", "claude", "compatible"].includes(saved.provider) &&
+        typeof saved.model === "string"
+      ) {
+        setProvider(saved.provider);
+        setModel(saved.model);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "forma-model-v1",
+        JSON.stringify({ provider, model }),
+      );
+    } catch {}
+  }, [provider, model]);
   useEffect(() => {
     let live = true;
     Promise.all([
@@ -196,6 +242,7 @@ export default function Studio() {
     };
   }, [refresh]);
   async function chooseProject(p: Project) {
+    revisionRequest.current += 1;
     setProject(p);
     projectRef.current = p;
     activeRef.current = p.id;
@@ -210,6 +257,7 @@ export default function Studio() {
     setJobs([]);
     setMesh(null);
     setReport(null);
+    setEngineeringResults(null);
     setSpec({
       ...SAMPLE,
       name: p.title,
@@ -253,11 +301,11 @@ export default function Studio() {
       setBusy(false);
     }
   }
-  async function submit(manual = false) {
+  async function submit(manual = false, override?: PartSpec) {
     setError("");
     setBusy(true);
     try {
-      const current = manual ? specSchema.parse(spec) : spec;
+      const current = manual ? specSchema.parse(override || spec) : spec;
       let p = project;
       if (!p) {
         p = await createProject(
@@ -288,16 +336,52 @@ export default function Studio() {
       await refreshProject(p.id);
       note("Задача отправлена на вычислительный узел");
     } catch (e) {
-      setError((e as Error).message);
+      const issue = (e as { issues?: { path: string[]; message: string }[] })
+        .issues?.[0];
+      setError(
+        issue
+          ? "Проверь " + issue.path.join(" → ") + ": " + issue.message
+          : (e as Error).message,
+      );
     } finally {
       setBusy(false);
     }
   }
   function changeProvider(value: string) {
     setProvider(value);
+    const list = catalog?.models[value] || [];
     setModel(
-      value === "codex" ? "gpt-6-astra" : value === "claude" ? "opus" : "",
+      list.find(
+        (m) =>
+          m.id ===
+          (value === "codex"
+            ? "gpt-6-astra"
+            : value === "claude"
+              ? "opus"
+              : ""),
+      )?.id ||
+        list[0]?.id ||
+        "",
     );
+  }
+  async function loadEngineeringExample(kind: string) {
+    try {
+      setBusy(true);
+      const r = await fetch("/benchmarks/" + kind + ".json");
+      if (!r.ok) throw new Error("Пример не найден");
+      const s = specSchema.parse(await r.json());
+      const p = await createProject(s.name);
+      await chooseProject(p);
+      setSpec(s);
+      setSelected(s.components[0]?.id || "body");
+      setDirty(true);
+      setTab("engineering");
+      note("Загружен контрольный пример. Запусти расчёт.");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   const components = spec.components.length
     ? spec.components
@@ -395,7 +479,7 @@ export default function Studio() {
                 className="project-name"
                 onClick={() => setProjectMenu(!projectMenu)}
               >
-                {project?.title || "Роликовая опора"}
+                <span>{project?.title || "Роликовая опора"}</span>
                 <ChevronDown size={15} />
               </button>
             </div>
@@ -550,7 +634,30 @@ export default function Studio() {
                 <RotateCcw size={14} />
                 Версии
               </button>
+              <button
+                className={tab === "engineering" ? "selected" : ""}
+                onClick={() => setTab("engineering")}
+              >
+                <Cpu size={14} />
+                Инженерия
+              </button>
             </div>
+            {tab === "engineering" && (
+              <EngineeringPanel
+                spec={spec}
+                onChange={(s) => {
+                  setSpec(s);
+                  setDirty(true);
+                }}
+                onRun={(s) => submit(true, s)}
+                results={engineeringResults}
+                revision={revision}
+                mesh={mesh}
+                busy={busy || !!active}
+                dirty={dirty}
+                onExample={loadEngineeringExample}
+              />
+            )}
             {tab === "model" && (
               <div className="canvas-area">
                 {mesh ? (
@@ -809,7 +916,9 @@ export default function Studio() {
                   {dirty
                     ? "Нужно перестроить"
                     : report
-                      ? report.passed ? "Геометрия проверена" : "Есть замечания"
+                      ? report.passed
+                        ? "Геометрия проверена"
+                        : "Есть замечания"
                       : "Ожидает проверки"}
                 </strong>
                 <span>
@@ -828,7 +937,11 @@ export default function Studio() {
                 <ArrowUpRight size={14} />
               </button>
             </div>
-            <div className="brief-panel">
+            <div
+              className={
+                "brief-panel " + (tab === "engineering" ? "hidden-panel" : "")
+              }
+            >
               <div className="brief-header">
                 <span className="blue-mark">
                   <SlidersHorizontal size={17} />
@@ -1054,7 +1167,7 @@ export default function Studio() {
                     onClick={() => setSettings(true)}
                   >
                     <span className="live-dot" />
-                    {names[provider]}
+                    {selectedModel?.label || names[provider]}
                     <ChevronDown size={12} />
                   </button>
                   <button
@@ -1090,9 +1203,9 @@ export default function Studio() {
             B-Rep / OpenCascade
           </span>
           <span>
-            FORMA <b>0.1</b>
+            FORMA <b>0.2</b>
             <i />
-            Инженерный пилот
+            CAD · CAE · DRAWINGS
           </span>
         </footer>
       </div>
@@ -1161,17 +1274,63 @@ export default function Studio() {
               ))}
             </div>
             <label className="field-label">
-              Модель
-              <input
+              Доступная модель
+              <select
+                aria-label="Доступная модель"
                 value={model}
-                placeholder={
-                  provider === "compatible"
-                    ? "ID модели на сервере"
-                    : "ID модели"
-                }
                 onChange={(e) => setModel(e.target.value)}
-              />
+              >
+                {!availableModels.length && (
+                  <option value={model}>Каталог пока недоступен</option>
+                )}
+                {!!availableModels.length && !selectedModel && (
+                  <option value={model} disabled>
+                    Выбери модель из каталога
+                  </option>
+                )}
+                {availableModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                    {m.availability === "verified"
+                      ? " · запрос FORMA выполнен"
+                      : ""}
+                  </option>
+                ))}
+              </select>
             </label>
+            {selectedModel && (
+              <p className="small-copy">
+                {selectedModel.description}
+                <br />
+                {selectedModel.availability === "verified"
+                  ? "На этой модели уже выполнен запрос FORMA."
+                  : "Модель объявлена провайдером; успешный запрос ещё не проверен."}
+              </p>
+            )}
+            <div className="catalog-actions">
+              <button
+                className="button"
+                onClick={async () => {
+                  try {
+                    await api("models/refresh", {});
+                    note("Узел обновляет каталог моделей.");
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                <RotateCcw size={13} />
+                Обновить каталог
+              </button>
+              <small>
+                {catalog?.discovered_at
+                  ? new Date(catalog.discovered_at).toLocaleTimeString("ru-RU")
+                  : "Ожидаем узел"}
+              </small>
+            </div>
+            {catalog?.errors[provider] && (
+              <div className="notice">{catalog.errors[provider]}</div>
+            )}
             <div className="connection-status">
               <Cpu size={20} />
               <div>

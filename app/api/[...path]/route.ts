@@ -1,6 +1,22 @@
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 import { specSchema } from "@/lib/contracts";
+import { modelCatalogSchema, type ModelCatalog } from "@/lib/engineering";
+const ARTIFACTS = [
+  "model.step",
+  "model.stl",
+  "mesh.json",
+  "spec.json",
+  "report.json",
+  "source.py",
+  "drawing.svg",
+  "parts.zip",
+  "bom.csv",
+  "engineering.json",
+  "strength-mesh.json",
+  "drawings.pdf",
+  "drawings.zip",
+];
 export const dynamic = "force-dynamic";
 const bindings = () =>
   env as unknown as {
@@ -80,6 +96,53 @@ async function handler(r: Request) {
       ]);
       return json({ projects: projects.results, nodes: nodes.results });
     }
+    if (p[0] === "models") {
+      if (r.method === "POST" && p[1] === "refresh") {
+        await b.DB.prepare(
+          "UPDATE nodes SET refresh_requested_at=? WHERE seen_at>?",
+        )
+          .bind(now, now - 45000)
+          .run();
+        return json({ requested_at: now }, 202);
+      }
+      if (r.method === "GET") {
+        const node = await b.DB.prepare(
+          "SELECT capabilities FROM nodes WHERE seen_at>? ORDER BY seen_at DESC LIMIT 1",
+        )
+          .bind(now - 45000)
+          .first<{ capabilities: string }>();
+        if (!node)
+          return json(
+            { error: "Нет подключённого узла. Каталог моделей недоступен." },
+            503,
+          );
+        const catalog = JSON.parse(node.capabilities)
+          .catalog as ModelCatalog | null;
+        if (!catalog)
+          return json({
+            models: {},
+            errors: {
+              discovery:
+                "Узел получает список моделей. Обнови через несколько секунд.",
+            },
+            discovered_at: 0,
+          });
+        const history = await b.DB.prepare(
+          "SELECT provider,model,MAX(updated_at) AS verified_at FROM jobs WHERE status IN ('complete','needs_review') AND provider<>'manual' GROUP BY provider,model",
+        ).all<{ provider: string; model: string; verified_at: number }>();
+        for (const [provider, models] of Object.entries(catalog.models))
+          for (const model of models) {
+            const match = history.results.find(
+              (h) => h.provider === provider && h.model === model.id,
+            );
+            if (match) {
+              model.verified_at = match.verified_at;
+              model.availability = "verified";
+            }
+          }
+        return json(catalog);
+      }
+    }
     if (p[0] === "tokens" && role === "user") {
       if (r.method === "POST") {
         const token = "forma_" + uuid() + uuid().replaceAll("-", "");
@@ -153,12 +216,31 @@ async function handler(r: Request) {
             503,
           );
         const caps = JSON.parse(node.capabilities);
+        if (caps.engineering_version !== 2)
+          return json(
+            { error: "Обнови вычислительный узел до FORMA 0.2." },
+            503,
+          );
         if (
           data.provider !== "manual" &&
           !caps.providers?.includes(data.provider)
         )
           return json(
             { error: "Этот провайдер не настроен на вычислительном узле." },
+            409,
+          );
+        if (
+          data.provider !== "manual" &&
+          caps.catalog?.models?.[data.provider]?.length &&
+          !caps.catalog.models[data.provider].some(
+            (m: { id: string }) => m.id === data.model,
+          )
+        )
+          return json(
+            {
+              error:
+                "Модель отсутствует в каталоге выбранного провайдера. Обнови список моделей.",
+            },
             409,
           );
         const id = uuid(),
@@ -187,19 +269,7 @@ async function handler(r: Request) {
         await b.DB.prepare("SELECT * FROM jobs WHERE id=?").bind(p[1]).first(),
       );
     if (p[0] === "artifacts" && r.method === "GET") {
-      if (
-        ![
-          "model.step",
-          "model.stl",
-          "mesh.json",
-          "spec.json",
-          "report.json",
-          "source.py",
-          "drawing.svg",
-          "parts.zip",
-          "bom.csv",
-        ].includes(p[2])
-      )
+      if (!ARTIFACTS.includes(p[2]))
         return json({ error: "Файл не найден" }, 404);
       const revision = await b.DB.prepare("SELECT id FROM revisions WHERE id=?")
         .bind(p[1])
@@ -217,6 +287,10 @@ async function handler(r: Request) {
         "model.stl": "model/stl",
         "parts.zip": "application/zip",
         "bom.csv": "text/csv; charset=utf-8",
+        "engineering.json": "application/json",
+        "strength-mesh.json": "application/json",
+        "drawings.pdf": "application/pdf",
+        "drawings.zip": "application/zip",
       };
       return new Response(file.body, {
         headers: {
@@ -238,6 +312,8 @@ async function handler(r: Request) {
             capabilities: z.object({
               providers: z.array(z.string().max(60)).max(10),
               cad: z.string().max(80),
+              engineering_version: z.number().int().optional(),
+              catalog: modelCatalogSchema.nullable().optional(),
             }),
           })
           .parse(await r.json());
@@ -246,7 +322,17 @@ async function handler(r: Request) {
         )
           .bind(d.id, d.name, JSON.stringify(d.capabilities), now)
           .run();
-        return json({ ok: true });
+        const control = await b.DB.prepare(
+          "SELECT refresh_requested_at FROM nodes WHERE id=?",
+        )
+          .bind(d.id)
+          .first<{ refresh_requested_at: number }>();
+        return json({
+          ok: true,
+          refresh_models:
+            (control?.refresh_requested_at || 0) >
+            (d.capabilities.catalog?.discovered_at || 0),
+        });
       }
       if (p[1] === "claim" && r.method === "POST") {
         await b.DB.prepare(
@@ -281,19 +367,7 @@ async function handler(r: Request) {
           return json({ ok: true });
         }
         if (p[3] === "artifacts" && r.method === "PUT") {
-          if (
-            ![
-              "model.step",
-              "model.stl",
-              "mesh.json",
-              "spec.json",
-              "report.json",
-              "source.py",
-              "drawing.svg",
-              "parts.zip",
-              "bom.csv",
-            ].includes(p[4])
-          )
+          if (!ARTIFACTS.includes(p[4]))
             return json({ error: "Недопустимый файл" }, 400);
           const body = await r.arrayBuffer();
           if (body.byteLength > 15000000)
@@ -326,20 +400,28 @@ async function handler(r: Request) {
               }),
             })
             .parse(await r.json());
-          for (const name of [
-            "model.step",
-            "model.stl",
-            "mesh.json",
-            "spec.json",
-            "report.json",
-            "source.py",
-            "drawing.svg",
-            "parts.zip",
-            "bom.csv",
-          ])
+          for (const name of ARTIFACTS)
             if (!(await b.BUCKET.head(`${job.id}/${name}`)))
               return json({ error: `Не загружен ${name}` }, 409);
-          const status = d.report.passed ? "complete" : "needs_review";
+          const engineering = d.report.engineering as
+            | {
+                strength?: { status: string };
+                motion?: { status: string };
+                drawings?: { status: string };
+              }
+            | undefined;
+          const inputs = d.spec.engineering;
+          const analysisReview = !!(
+            (inputs?.strength &&
+              engineering?.strength?.status !== "within_limits") ||
+            (inputs?.motion &&
+              engineering?.motion?.status !== "sampled_clear") ||
+            ((inputs?.manufacturing.general_tolerance_mm ||
+              inputs?.manufacturing.dimensions.length) &&
+              engineering?.drawings?.status !== "dimensioned_draft")
+          );
+          const status =
+            d.report.passed && !analysisReview ? "complete" : "needs_review";
           await b.DB.batch([
             b.DB.prepare(
               "INSERT INTO revisions(id,project_id,job_id,spec,report,provenance,created_at) VALUES (?,?,?,?,?,?,?)",
@@ -359,7 +441,9 @@ async function handler(r: Request) {
               "UPDATE jobs SET status=?,stage=?,updated_at=? WHERE id=?",
             ).bind(
               status,
-              d.report.passed ? "Геометрия проверена" : "Нужна проверка",
+              status === "complete"
+                ? "Построение и заданные проверки завершены"
+                : "Есть замечания: открой отчёт",
               now,
               job.id,
             ),
