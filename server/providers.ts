@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-const endpoint = z.string().max(1000).refine(value => {
+const endpoint = z.string().trim().max(1000).refine(value => {
   if (!value) return true;
   try {
     const u = new URL(value);
@@ -12,7 +12,7 @@ const endpoint = z.string().max(1000).refine(value => {
   } catch { return false; }
 }, "Нужен HTTPS-адрес API или HTTP на localhost, без пароля и параметров в URL.");
 const profile = z.object({
-  enabled: z.boolean(), base_url: endpoint, model: z.string().max(160),
+  enabled: z.boolean(), base_url: endpoint, model: z.string().trim().max(160),
   api_key: z.string().max(4000).default(""), clear_api_key: z.boolean().optional(),
 }).strict().refine(p => !p.enabled || !!p.base_url, "Укажи адрес сервера модели.");
 export const providerSchema = z.object({

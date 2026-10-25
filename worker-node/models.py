@@ -38,7 +38,7 @@ def compatible_catalog(config):
     headers={}
     if config.get('api_key'):headers['Authorization']='Bearer '+config['api_key']
     r=httpx.get(base+'/models',headers=headers,timeout=15);r.raise_for_status()
-    return [{'id':m['id'],'label':m['id'],'description':'','source':'GET /models','availability':'advertised'} for m in r.json().get('data',[]) if isinstance(m.get('id'),str)]
+    return [{'id':m['id'],'label':m['id'],'description':'','source':'GET /models','availability':'advertised'} for m in r.json().get('data',[]) if isinstance(m.get('id'),str) and 0<len(m['id'])<=160][:100]
 
 def discover_models():
     from concurrent.futures import ThreadPoolExecutor
@@ -59,6 +59,7 @@ def discover_models():
                 result[name]=[];errors[name]='Каталог недоступен. Проверь сервер, URL, ключ и доступ к моделям.'
             entry=config.get(name,{})
             if name in ['api','local'] and entry.get('model') and not any(m['id']==entry['model'] for m in result[name]):
+                result[name]=result[name][:99]
                 result[name].append({'id':entry['model'],'label':entry['model'],'description':'Модель задана вручную в настройках; успешный запрос не проверен.','source':'local-config','availability':'configured'})
     return {'models':result,'errors':errors,'discovered_at':int(time.time()*1000)}
 

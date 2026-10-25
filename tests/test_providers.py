@@ -49,3 +49,14 @@ def test_configured_model_is_not_claimed_as_discovered(tmp_path,monkeypatch):
     assert result['models']['local'][0]['availability']=='configured'
     assert result['models']['local'][0]['source']=='local-config'
     assert result['errors']['local']
+
+
+def test_large_catalog_preserves_an_explicit_model_within_node_limit(tmp_path,monkeypatch):
+    class Response:
+        def raise_for_status(self):pass
+        def json(self):return {'data':[{'id':f'model-{i}'} for i in range(250)]}
+    monkeypatch.setattr('models.httpx.get',lambda *args,**kwargs:Response())
+    configure(tmp_path,monkeypatch,{'api':{'enabled':True,'base_url':'https://example.com/v1','model':'owner-picked','api_key':''}})
+    result=discover_models()
+    assert len(result['models']['api'])==100
+    assert any(m['id']=='owner-picked' and m['availability']=='configured' for m in result['models']['api'])
