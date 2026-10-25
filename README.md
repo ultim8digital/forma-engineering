@@ -1,6 +1,17 @@
 # FORMA Engineering · 0.2
 
+[![Validate FORMA](https://github.com/ultim8digital/forma-engineering/actions/workflows/ci.yml/badge.svg)](https://github.com/ultim8digital/forma-engineering/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Open-source CAD / CAE workbench:** parametric parts and assemblies, linear finite-element analysis, mechanism motion checks, manufacturing drawings and a choice of AI providers. [English setup guide](docs/SELF_HOSTING.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).
+
 Личная инженерная мастерская: веб-приложение, REST API, MCP и собственный CAD-узел. Версия 0.2 добавляет численную прочность, движение шарнирных сборок, размерные чертежи и живой выбор моделей. Область применимости каждого расчёта указана в его отчёте.
+
+## Open source
+
+Исходники опубликованы под [MIT](LICENSE): можно использовать, изменять, распространять и разворачивать свою версию, в том числе коммерчески. Лицензии зависимостей сохраняются отдельно — см. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Аккаунты моделей, подписки и облачные мощности в проект не входят.
+
+Для своего запуска начни с [пошаговой инструкции](docs/SELF_HOSTING.md): она включает создание секретов, локальную базу, вход без облачного аккаунта и подключение вычислительного узла. GitHub хранит код; backend D1/R2 не работает на GitHub Pages. Публикация исходников не открывает доступ к личному сервису, проектам или вычислительному узлу автора.
 
 ## Что работает
 

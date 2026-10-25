@@ -72,5 +72,13 @@
     "miniflare": {
       "sharp": "0.35.4"
     }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ultim8digital/forma-engineering.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ultim8digital/forma-engineering/issues"
   }
 }
