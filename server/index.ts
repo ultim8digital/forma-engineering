@@ -114,7 +114,7 @@ async function shutdown() {
 for (const sig of ["SIGINT", "SIGTERM"] as const) process.on(sig, () => { void shutdown(); });
 server.on("error", error => { console.error(error.message); void shutdown(); });
 server.listen(port, "127.0.0.1", () => {
-  console.log(`FORMA Local · http://localhost:${port}\nProjects and models: ${folder}\nNo FORMA account required. Ctrl+C stops the studio and compute node.`);
+  console.log(`neofab Local · http://localhost:${port}\nProjects and models: ${folder}\nNo account required. Ctrl+C stops the studio and compute node.`);
   if (process.env.FORMA_NO_WORKER === "1") return;
   const python = process.env.FORMA_PYTHON || path.join(root, ".venv/bin/python");
   if (!existsSync(python)) { console.error("CAD runtime missing. Run npm run setup, then restart."); return; }
@@ -123,5 +123,5 @@ server.listen(port, "127.0.0.1", () => {
     env: { ...process.env, FORMA_URL: `http://127.0.0.1:${port}`, FORMA_WORKER_TOKEN: token, FORMA_CONFIG_PATH: settings.filename, FORMA_WORK_DIR: path.join(folder, "cad-work") },
   });
   child.on("error", () => console.error("CAD node could not start; check npm run setup."));
-  child.on("exit", code => { if (!closing) console.error(`CAD node stopped (${code}); restart FORMA to reconnect.`); });
+  child.on("exit", code => { if (!closing) console.error(`CAD node stopped (${code}); restart neofab to reconnect.`); });
 });

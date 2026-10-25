@@ -28,10 +28,12 @@
   "include": [
     "client",
     "components/Studio.tsx",
+    "components/PartInspector.tsx",
     "components/EngineeringPanel.tsx",
     "components/ProviderSettings.tsx",
     "components/Viewport.tsx",
     "lib/contracts.ts",
+    "lib/editor.ts",
     "lib/engineering.ts",
     "server",
     "vite.config.ts",

@@ -267,7 +267,7 @@ return async function handler(r: Request, role: "user" | "worker" | "agent") {
           "X-Content-Type-Options": "nosniff",
           "Cache-Control": "private, max-age=60",
           ...(url.searchParams.has("download")
-            ? { "Content-Disposition": `attachment; filename="forma-${p[2]}"` }
+            ? { "Content-Disposition": `attachment; filename="neofab-${p[2]}"` }
             : {}),
         },
       });

@@ -103,7 +103,7 @@ def compile_part(raw:dict,out:Path):
     warnings=['Геометрическая проверка не является разрешением на изготовление.','Минимальная толщина стенки и доступ инструмента не проверены.','Усталость, GD&T и компенсация процесса требуют отдельной проверки.']
     warnings+=spec.assumptions
     report={'passed':all(c['passed'] for c in checks),'checks':checks,'warnings':warnings,'bounds_mm':[round(x,4) for x in bounds],'volume_mm3':round(compound.Volume(),4),'solids':len(compound.Solids()),'operations':logs,'verification_scope':'geometry_only'}
-    assembly=cq.Assembly(name='FORMA')
+    assembly=cq.Assembly(name='neofab')
     vertices=[];triangles=[];groups=[]
     with zipfile.ZipFile(out/'parts.zip','w',zipfile.ZIP_DEFLATED) as archive:
         for part_id,name,material,process,local,world in parts:
@@ -112,7 +112,7 @@ def compile_part(raw:dict,out:Path):
             cq.exporters.export(local,str(folder/f'{part_id}.step'));cq.exporters.export(local,str(folder/f'{part_id}.stl'),tolerance=0.05,angularTolerance=0.15)
             for filename in [f'{part_id}.step',f'{part_id}.stl']:
                 archive.write(folder/filename,f'{part_id}/{filename}')
-            vs,ts=world.tessellate(0.08,0.15);offset=len(vertices);start=len(triangles)
+            vs,ts=world.tessellate(0.04,0.12);offset=len(vertices);start=len(triangles)
             vertices.extend([[v.x,v.y,v.z] for v in vs]);triangles.extend([[a+offset,b+offset,c+offset] for a,b,c in ts]);groups.append({'id':part_id,'name':name,'start':start,'count':len(ts),'center':list(world.Center().toTuple())})
         bom=io.StringIO();writer=csv.writer(bom);writer.writerow(['id','name','quantity','material','process']);writer.writerows([[p[0],p[1],1,p[2],p[3]] for p in parts]);(out/'bom.csv').write_text(bom.getvalue(),encoding='utf-8-sig');archive.writestr('bom.csv',bom.getvalue())
         archive.writestr('spec.json',spec.model_dump_json(indent=2))
@@ -139,7 +139,7 @@ def compile_part(raw:dict,out:Path):
     (out/'engineering.json').write_text(json.dumps(engineering,ensure_ascii=False,indent=2))
     (out/'strength-mesh.json').write_text(json.dumps(field,separators=(',',':')))
     (out/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
-    (out/'source.py').write_text('# Rebuild with the FORMA compiler (cad.py) and CadQuery 2.8.0.\n# This source never executes generated Python.\nimport json\nfrom pathlib import Path\nfrom cad import compile_part\nSPEC = json.loads('+repr(spec.model_dump_json())+')\ncompile_part(SPEC, Path("rebuilt"))\n')
+    (out/'source.py').write_text('# Rebuild with the neofab compiler (cad.py) and CadQuery 2.8.0.\n# This source never executes generated Python.\nimport json\nfrom pathlib import Path\nfrom cad import compile_part\nSPEC = json.loads('+repr(spec.model_dump_json())+')\ncompile_part(SPEC, Path("rebuilt"))\n')
     # Include the exact compiler so downloaded source is independently rebuildable.
     with zipfile.ZipFile(out/'parts.zip','a',zipfile.ZIP_DEFLATED) as archive:
         for module in ['cad.py','geometry.py','engineering_schema.py','strength.py','motion.py','drawings.py']:

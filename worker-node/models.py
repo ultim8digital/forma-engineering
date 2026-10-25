@@ -6,7 +6,7 @@ import httpx
 def codex_catalog():
     process=subprocess.Popen(['codex','app-server'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,bufsize=1)
     try:
-        process.stdin.write(json.dumps({'id':1,'method':'initialize','params':{'clientInfo':{'name':'forma-engineering','version':'0.3.0'}}})+'\n');process.stdin.flush()
+        process.stdin.write(json.dumps({'id':1,'method':'initialize','params':{'clientInfo':{'name':'neofab','version':'0.4.0'}}})+'\n');process.stdin.flush()
         selector=selectors.DefaultSelector();selector.register(process.stdout,selectors.EVENT_READ)
         deadline=time.monotonic()+20
         while time.monotonic()<deadline:

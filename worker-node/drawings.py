@@ -110,7 +110,7 @@ def draw_view(c,projection,cell,scale,horizontal,vertical,title):
 def draw_sheet(c,part,rows,views,settings,digest,page_label):
     width,height=landscape(A3);c.setPageSize((width,height));c.setStrokeColorRGB(.15,.2,.28);c.setFillColorRGB(.15,.2,.28);c.setLineWidth(.25*MM)
     c.rect(10*MM,10*MM,400*MM,277*MM)
-    text(c,16,277,'FORMA / WORKSHOP DRAWING',11);text(c,16,269,'Третья угловая проекция · размеры в мм · номинальная CAD-геометрия',7)
+    text(c,16,277,'neofab / WORKSHOP DRAWING',11);text(c,16,269,'Третья угловая проекция · размеры в мм · номинальная CAD-геометрия',7)
     maxx=max(v[2].xlen for v in views);maxy=max(v[2].ylen for v in views)
     fit=min(145/max(maxx,1e-8),64/max(maxy,1e-8));scales=[.02,.05,.1,.2,.25,.5,1,2,4,5,10,20]
     scale=max([s for s in scales if s<=fit] or [fit])
@@ -160,7 +160,7 @@ def draw_sheet(c,part,rows,views,settings,digest,page_label):
 def create_drawings(parts,spec,out):
     settings=spec.engineering.manufacturing if spec.engineering else Manufacturing()
     digest=hashlib.sha256(spec.model_dump_json().encode()).hexdigest()[:10]
-    complete=canvas.Canvas(str(out/'drawings.pdf'),pagesize=landscape(A3));complete.setTitle(spec.name+' - FORMA drawings')
+    complete=canvas.Canvas(str(out/'drawings.pdf'),pagesize=landscape(A3));complete.setTitle(spec.name+' - neofab drawings')
     records=[];warnings=[];csvdata=io.StringIO();writer=csv.writer(csvdata);writer.writerow(['part','feature','operation','nominal_mm','actual_mm','lower_deviation_mm','upper_deviation_mm','CAD_in_tolerance'])
     with zipfile.ZipFile(out/'drawings.zip','w',zipfile.ZIP_DEFLATED) as archive:
         for index,part in enumerate(parts):

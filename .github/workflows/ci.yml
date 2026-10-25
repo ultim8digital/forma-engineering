@@ -1,4 +1,4 @@
-name: Validate FORMA
+name: Validate neofab
 
 on:
   push:
@@ -28,6 +28,7 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run build
       - run: npm run test:local
+      - run: npm run test:editor
 
   engineering:
     name: CAD and numerical benchmarks

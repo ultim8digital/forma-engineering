@@ -16,7 +16,7 @@ def api(method,path,body=None):
     r=client.request(method,'/api/'+path,json=body);r.raise_for_status();return r.json()
 def dispatch(msg):
     method=msg.get('method');params=msg.get('params',{})
-    if method=='initialize':return {'protocolVersion':'2024-11-05','capabilities':{'tools':{}},'serverInfo':{'name':'forma-engineering','version':'0.3.0'}}
+    if method=='initialize':return {'protocolVersion':'2024-11-05','capabilities':{'tools':{}},'serverInfo':{'name':'neofab','version':'0.4.0'}}
     if method=='ping':return {}
     if method=='tools/list':return {'tools':TOOLS}
     if method=='tools/call':

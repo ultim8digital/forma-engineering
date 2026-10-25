@@ -1,4 +1,4 @@
-# Rebuild with the FORMA compiler (cad.py) and CadQuery 2.8.0.
+# Rebuild with the neofab compiler (cad.py) and CadQuery 2.8.0.
 # This source never executes generated Python.
 import json
 from pathlib import Path

@@ -32,7 +32,7 @@ export default function ProviderSettings({ onSaved }: { onSaved: () => void }) {
   }
   return <details className="local-provider-settings">
     <summary>Настроить API, локальную модель и CLI</summary>
-    <p className="small-copy">Аккаунт FORMA не нужен. Выбери подключения, которыми хочешь пользоваться. Ключи сохраняются в локальном файле с доступом только для владельца.</p>
+    <p className="small-copy">Аккаунт neofab не нужен. Выбери подключения, которыми хочешь пользоваться. Ключи сохраняются в локальном файле с доступом только для владельца.</p>
     <fieldset disabled={busy}>
       {([['local', 'Локальная модель'], ['api', 'Собственный API']] as const).map(([id, title]) => <section className="provider-config" key={id}>
         <label className="provider-toggle"><input type="checkbox" checked={config[id].enabled} onChange={e => change(id, { enabled: e.target.checked })} />{title}</label>
@@ -45,7 +45,7 @@ export default function ProviderSettings({ onSaved }: { onSaved: () => void }) {
       </section>)}
       <section className="provider-config">
         <strong>Авторизованные CLI · необязательно</strong>
-        <p className="small-copy">Используются установленные на твоём компьютере CLI и их собственный вход. FORMA не запрашивает пароль от провайдера.</p>
+        <p className="small-copy">Используются установленные на твоём компьютере CLI и их собственный вход. neofab не запрашивает пароль от провайдера.</p>
         {(['codex', 'claude'] as const).map(id => <div key={id}>
           <label className="provider-toggle"><input type="checkbox" checked={config[id].enabled} onChange={e => setConfig({ ...config, [id]: { enabled: e.target.checked } })} />{id === 'codex' ? 'Codex CLI' : 'Claude Code'}</label>
           <code className="code-block">{id === 'codex' ? 'codex login' : 'npm run setup:claude\nclaude auth login'}</code>

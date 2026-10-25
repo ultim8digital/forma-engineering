@@ -1,6 +1,6 @@
 {
-  "name": "forma-engineering",
-  "version": "0.3.0",
+  "name": "neofab-studio",
+  "version": "0.4.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0"
@@ -15,7 +15,8 @@
     "test:local": "node --test tests/local.test.mjs",
     "test:cad": ".venv/bin/python -m pytest tests/test_cad.py -q",
     "test:engineering": ".venv/bin/python -m pytest tests/test_cad.py tests/test_engineering.py tests/test_providers.py -q",
-    "mcp": ".venv/bin/python worker-node/mcp_server.py"
+    "mcp": ".venv/bin/python worker-node/mcp_server.py",
+    "test:editor": "node --test tests/editor.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.31.0",
@@ -39,9 +40,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ultim8digital/forma-engineering.git"
+    "url": "git+https://github.com/ultim8digital/neofab.git"
   },
   "bugs": {
-    "url": "https://github.com/ultim8digital/forma-engineering/issues"
+    "url": "https://github.com/ultim8digital/neofab/issues"
   }
 }

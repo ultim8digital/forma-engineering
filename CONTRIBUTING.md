@@ -1,6 +1,6 @@
-# Contributing to FORMA
+# Contributing to neofab
 
-FORMA is an open-source engineering workbench. Contributions are welcome through issues and pull requests.
+neofab is an open-source engineering workbench. Contributions are welcome through issues and pull requests.
 
 1. Read the numerical and manufacturing limitations in [README.md](README.md).
 2. Follow [the local setup guide](docs/SELF_HOSTING.md). Use your own credentials and local database.

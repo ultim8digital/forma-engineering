@@ -1,1 +1,1 @@
-{"name":"FORMA — инженерная мастерская","short_name":"FORMA","start_url":"/","display":"standalone","background_color":"#f4f5f6","theme_color":"#315fef","icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
+{"name": "neofab — инженерная студия", "short_name": "neofab", "start_url": "/", "display": "standalone", "background_color": "#eef0ed", "theme_color": "#303a34", "icons": [{"src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]}
