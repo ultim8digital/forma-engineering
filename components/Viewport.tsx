@@ -215,6 +215,7 @@ export default function Viewport(props: Props) {
       if (w >= 1080) camera.setViewOffset(w, h, 0, Math.min(60, h * 0.08), w, h); else camera.clearViewOffset();
       camera.updateProjectionMatrix();
       if (!didSize) { fit(false, new THREE.Vector3(1.5, -1.9, 1.25)); didSize = true; }
+      else fit();
     }); resize.observe(el);
     const ray = new THREE.Raycaster();
     function hits(e: PointerEvent | MouseEvent) {
