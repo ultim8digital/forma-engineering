@@ -1,0 +1,143 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "fork: одно корректное тело",
+      "passed": true,
+      "detail": "1 тел"
+    },
+    {
+      "name": "roller: одно корректное тело",
+      "passed": true,
+      "detail": "1 тел"
+    },
+    {
+      "name": "axle: одно корректное тело",
+      "passed": true,
+      "detail": "1 тел"
+    },
+    {
+      "name": "Корректность B-Rep",
+      "passed": true,
+      "detail": "Проверка OpenCascade"
+    },
+    {
+      "name": "Количество тел",
+      "passed": true,
+      "detail": "3 / 3"
+    },
+    {
+      "name": "Незавершённые элементы",
+      "passed": true,
+      "detail": "По декларации планировщика: недостающие элементы не заявлены"
+    },
+    {
+      "name": "Габариты по ТЗ",
+      "passed": true,
+      "detail": "[64.0, 44.0, 36.0] мм; допуск проверки 0.01 мм"
+    },
+    {
+      "name": "Пересечение fork / roller",
+      "passed": true,
+      "detail": "Общий объём 0.000000 мм³"
+    },
+    {
+      "name": "Пересечение fork / axle",
+      "passed": true,
+      "detail": "Общий объём 0.000000 мм³"
+    },
+    {
+      "name": "Пересечение roller / axle",
+      "passed": true,
+      "detail": "Общий объём 0.000000 мм³"
+    }
+  ],
+  "warnings": [
+    "Прочность, усталость и ресурс не рассчитаны.",
+    "Минимальная толщина стенки и доступ инструмента не проверены.",
+    "Посадки, GD&T, шероховатость и компенсация процесса требуют проверки.",
+    "Связи заданы как метаданные. Движение и столкновения по траектории не рассчитаны.",
+    "Учебная сборка, созданная вручную. Нагрузки и ресурс не заданы.",
+    "Ось без стопоров: способ её фиксации требует проектирования.",
+    "Зазоры номинальные; компенсация конкретного принтера не учтена."
+  ],
+  "bounds_mm": [
+    64.0,
+    44.0,
+    36.0
+  ],
+  "volume_mm3": 41786.4298,
+  "solids": 3,
+  "operations": [
+    {
+      "component": "fork",
+      "operations": [
+        {
+          "id": "Площадка",
+          "type": "box",
+          "volume_before": 0,
+          "volume_after": 16896.0
+        },
+        {
+          "id": "Левая щека",
+          "type": "box",
+          "volume_before": 16896.0,
+          "volume_after": 22656.0
+        },
+        {
+          "id": "Правая щека",
+          "type": "box",
+          "volume_before": 22656.0,
+          "volume_after": 28416.0
+        },
+        {
+          "id": "Посадка оси",
+          "type": "cylinder",
+          "volume_before": 28416.0,
+          "volume_after": 27718.9434
+        },
+        {
+          "id": "Крепление 1",
+          "type": "cylinder",
+          "volume_before": 27718.9434,
+          "volume_after": 27581.5302
+        },
+        {
+          "id": "Крепление 2",
+          "type": "cylinder",
+          "volume_before": 27581.5302,
+          "volume_after": 27444.1169
+        }
+      ]
+    },
+    {
+      "component": "roller",
+      "operations": [
+        {
+          "id": "Тело ролика",
+          "type": "cylinder",
+          "volume_before": 0,
+          "volume_after": 13571.6803
+        },
+        {
+          "id": "Отверстие",
+          "type": "cylinder",
+          "volume_before": 13571.6803,
+          "volume_after": 11829.0388
+        }
+      ]
+    },
+    {
+      "component": "axle",
+      "operations": [
+        {
+          "id": "Ось",
+          "type": "cylinder",
+          "volume_before": 0,
+          "volume_after": 2513.2741
+        }
+      ]
+    }
+  ],
+  "verification_scope": "geometry_only"
+}

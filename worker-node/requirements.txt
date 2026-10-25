@@ -1,0 +1,4 @@
+cadquery==2.8.0
+pydantic==2.14.1
+httpx==0.28.1
+pytest==9.1.1

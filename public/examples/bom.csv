@@ -1,0 +1,4 @@
+﻿id,name,quantity,material,process
+fork,01 · Вилка,1,PETG,FDM-печать
+roller,02 · Ролик,1,POM / PETG,Точение / FDM-печать
+axle,03 · Ось Ø8,1,Сталь,Точение
