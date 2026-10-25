@@ -27,6 +27,10 @@ class Requirements(Strict):
     expected_solids: int=Field(ge=1,le=30); bounds: tuple[Positive,Positive,Positive]|None; tolerance: float=Field(gt=0,le=10,allow_inf_nan=False)
 class Component(Strict):
     id: str=Field(pattern=r'^[a-zA-Z][a-zA-Z0-9_-]{0,39}$'); name: str=Field(max_length=120); material: str=Field(max_length=160); process: str=Field(max_length=160); operations: list[Operation]=Field(min_length=1,max_length=60); at: Point; rotation: Point; quantity: Literal[1]=1
+    @model_validator(mode='after')
+    def unique_operations(self):
+        if len({op.id for op in self.operations})!=len(self.operations):raise ValueError('Operation IDs must be unique within each component')
+        return self
 class Joint(Strict):
     name: str; type: Literal['fixed','revolute','prismatic']; components: tuple[str,str]; description: str
     axis: Point | None = None
@@ -46,8 +50,9 @@ class Spec(Strict):
     @model_validator(mode='after')
     def geometry(self):
         if not self.operations and not self.components: raise ValueError('No geometry supplied')
-        ids=[c.id for c in self.components]
+        ids=(['body'] if self.operations else [])+[c.id for c in self.components]
         if len(ids)!=len(set(ids)): raise ValueError('Component IDs must be unique')
+        if len({op.id for op in self.operations})!=len(self.operations):raise ValueError('Operation IDs must be unique')
         if len(self.operations)+sum(len(c.operations) for c in self.components)>300: raise ValueError('Max 300 total operations')
         for joint in self.joints:
             if any(c not in ids for c in joint.components): raise ValueError('Joint references unknown component')

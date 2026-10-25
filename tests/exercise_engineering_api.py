@@ -6,7 +6,10 @@ from runner import Node,load_env,FILES
 root=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser();parser.add_argument('--url',default='http://127.0.0.1:5173');parser.add_argument('--cases',nargs='+',default=['beam','slider','fourbar']);args=parser.parse_args();load_env(root/'.env.node');n=Node(args.url)
 evidence={}
-catalog=n.request('GET','models')
+for _ in range(30):
+    catalog=n.request('GET','models')
+    if catalog['models'].get('codex') and catalog['models'].get('claude'):break
+    time.sleep(1)
 assert len(catalog['models'].get('codex',[]))>1
 assert len(catalog['models'].get('claude',[]))>1
 print('Live catalogs:',{k:len(v) for k,v in catalog['models'].items()},flush=True)

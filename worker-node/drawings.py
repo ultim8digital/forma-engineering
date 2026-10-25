@@ -127,10 +127,10 @@ def draw_sheet(c,part,rows,views,settings,digest,page_label):
     text(c,17,81,'ТЕХНИЧЕСКИЕ УКАЗАНИЯ',8)
     notes=[f'Материал: {material}. Способ изготовления: {process}.',f'Общий линейный допуск: ±{settings.general_tolerance_mm:g} мм.' if settings.general_tolerance_mm is not None else 'Общий допуск не задан. Чертёж неполный для изготовления.','Диаметры сверены с цилиндрическими поверхностями; координаты осей - от Xmin/Ymin/Zmin детали.','Неуказанные фаски, радиусы, посадки и технологические припуски не назначаются автоматически.','DXF содержит ортогональные проекции в масштабе 1:1. Это чертёж, не программа станка.']
     if settings.surface_roughness_ra_um:notes.append(f'Требуемая шероховатость Ra {settings.surface_roughness_ra_um:g} мкм. Возможность процесса не подтверждена.')
-    notes+=settings.notes
     y=75
-    for note in notes[:8]:
+    for note in notes:
         for line in simpleSplit(note,FONT,7,260*MM):text(c,17,y,line,7);y-=4
+    if settings.notes:text(c,17,y-2,'Дополнительные технические указания приведены на отдельном листе.',7)
     c.rect(285*MM,10*MM,125*MM,34*MM);c.line(285*MM,22*MM,410*MM,22*MM)
     title_lines=simpleSplit(name,FONT,8,116*MM)
     for i,line in enumerate(title_lines[:2]):text(c,289,37-i*5,line,8)
@@ -144,6 +144,18 @@ def draw_sheet(c,part,rows,views,settings,digest,page_label):
                 y=260-index*8
                 text(c,18,y,str((row['operation_id']+' / ' if row['operation_id'] else '')+row['feature'])[:48],8);text(c,140,y,value_text(row),8);text(c,245,y,f"CAD: {row['actual_mm']:g} мм",8)
             text(c,18,17,'DRAFT. Размеры относятся к модели; достижимость допуска процессом не проверена.',7);c.showPage()
+    if settings.notes:
+        def notes_page():
+            c.setPageSize((width,height));c.rect(10*MM,10*MM,400*MM,277*MM)
+            text(c,18,274,f'{part_id} / ТЕХНИЧЕСКИЕ УКАЗАНИЯ',11)
+            return 260
+        y=notes_page()
+        for index,note in enumerate(settings.notes):
+            for line in simpleSplit(f'{index+1}. {note}',FONT,9,370*MM):
+                if y<25:c.showPage();y=notes_page()
+                text(c,18,y,line,9);y-=5
+            y-=3
+        text(c,18,17,'DRAFT / Требует инженерного согласования',7);c.showPage()
 
 def create_drawings(parts,spec,out):
     settings=spec.engineering.manufacturing if spec.engineering else Manufacturing()
@@ -152,7 +164,7 @@ def create_drawings(parts,spec,out):
     records=[];warnings=[];csvdata=io.StringIO();writer=csv.writer(csvdata);writer.writerow(['part','feature','operation','nominal_mm','actual_mm','lower_deviation_mm','upper_deviation_mm','CAD_in_tolerance'])
     with zipfile.ZipFile(out/'drawings.zip','w',zipfile.ZIP_DEFLATED) as archive:
         for index,part in enumerate(parts):
-            operations=spec.operations if part[0]=='body' else next(c.operations for c in spec.components if c.id==part[0])
+            operations=spec.operations if part[0]=='body' and spec.operations else next(c.operations for c in spec.components if c.id==part[0])
             rows,notes=feature_rows(part,operations,settings);warnings+=notes
             views=[projected(part[4],normal,xaxis) for normal,xaxis in [((0,-1,0),(1,0,0)),((0,0,1),(1,0,0)),((1,0,0),(0,1,0))]]
             folder=out/'parts'/part[0];folder.mkdir(parents=True,exist_ok=True)

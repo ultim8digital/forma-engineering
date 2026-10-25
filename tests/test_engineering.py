@@ -101,3 +101,13 @@ def test_dimensioned_drawings_and_numeric_tolerance_failure(tmp_path):
     assert report['engineering']['drawings']['status']=='needs_review'
     axle=next(p for p in report['engineering']['drawings']['parts'] if p['id']=='axle')
     assert any(row['passed'] is False for row in axle['dimensions'])
+
+def test_all_manufacturing_notes_and_named_body_are_preserved(tmp_path):
+    notes=[f'Указание {i}: '+'проверить размер и поверхность '*12 for i in range(15)]
+    raw={'schema_version':'1.0','name':'Именованная деталь','units':'mm','material':'Тест','process':'Тест','description':'Проверка чертежа','assumptions':[],'operations':[],'components':[{'id':'body','name':'Корпус','material':'Тест','process':'Тест','at':[0,0,0],'rotation':[0,0,0],'quantity':1,'operations':[{'type':'cylinder','id':'cylinder','mode':'add','radius':5,'height':10,'axis':'z','at':[0,0,0]}]}],'joints':[],'requirements':{'expected_solids':1,'bounds':[10,10,10],'tolerance':0.01},'engineering':{'manufacturing':{'general_tolerance_mm':0.1,'notes':notes}}}
+    report=compile_part(raw,tmp_path)
+    assert any(d['feature']=='diameter' for d in report['engineering']['drawings']['parts'][0]['dimensions'])
+    text=''.join(p.extract_text() for p in PdfReader(tmp_path/'drawings.pdf').pages)
+    assert all(f'Указание {i}:' in text for i in range(15))
+    raw['components'][0]['operations']*=2
+    with pytest.raises(ValueError,match='Operation IDs'):Spec.model_validate(raw)
