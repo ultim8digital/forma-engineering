@@ -1,16 +1,15 @@
 # Security
 
-## Reporting
+Report exploitable issues through [GitHub private vulnerability reporting](https://github.com/ultim8digital/forma-engineering/security/advisories/new). Do not post credentials or private CAD models in public issues.
 
-Please use [GitHub private vulnerability reporting](https://github.com/ultim8digital/forma-engineering/security/advisories/new) for security-sensitive reports. Do not post credentials, exploitable details or private CAD models in a public issue. Include the affected commit, reproducible steps, expected boundary and impact.
+## Local application boundary
 
-## Deployment boundaries
+FORMA 0.3 has no account system. It is intended for one trusted owner on one computer. The HTTP listener binds to 127.0.0.1, accepts only the configured localhost/loopback Host values, validates Origin and rejects cross-site fetches. Writes without a browser Origin require a local token. Worker endpoints require the generated worker secret. Identity headers from external login systems are not trusted or used.
 
-- FORMA currently targets a trusted owner and their own compute node. It does not provide tenant isolation for a public multi-user service.
-- The local sign-in shim is for loopback development only. It is not production authentication.
-- The deployed application trusts `oai-authenticated-user-*` headers from the Sites gateway. A generic reverse proxy must strip untrusted copies and perform authentication before forwarding verified identity. Do not expose the Worker directly with client-supplied identity headers.
-- Use distinct random worker tokens for each deployment. Keep `.env.node`, `.dev.vars`, provider credentials, service access tokens and generated project data out of Git.
-- CLI providers run with the compute owner's permissions. Only trusted requests should reach that node. Isolate the CAD runtime before accepting untrusted public workloads.
-- Generated CAD operations are validated declarative data. Do not replace this boundary with arbitrary Python execution.
+Do not expose this listener through LAN forwarding, a tunnel or a public reverse proxy. Such use needs its own authentication, quotas and isolated compute. Another process running as your OS user can access your local data; this application does not isolate mutually untrusted local users or processes.
 
-The newest `main` branch is the current maintenance target. Engineering correctness concerns can be reported as public issues when they contain no sensitive data; include units, assumptions and an independently reproducible reference.
+The ignored data directory contains database records, generated parts, private provider settings and the local worker token. Provider keys are stored with mode 0600 and are redacted from settings responses. Never commit or share that directory. When an API endpoint changes, an old key is discarded unless a new key is supplied explicitly. Use HTTPS for non-loopback API endpoints.
+
+All AI providers are disabled by default. CLI providers must be enabled explicitly and run with the compute owner's permissions. No passwords or subscription tokens are extracted by FORMA. Enabled API/CLI providers receive the task and CAD specification. The CAD compiler accepts validated declarative geometry, not executable model-generated Python.
+
+The newest main branch is the maintenance target. Engineering correctness issues can be public when they include no sensitive data; include units, assumptions and an independent reproducible reference.

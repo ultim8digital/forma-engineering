@@ -51,3 +51,7 @@ yarn-error.log*
 /worker-data/
 /runtime/
 !/.env.example
+
+# Local studio database, private provider settings and generated parts
+/forma-data/
+**/__pycache__/

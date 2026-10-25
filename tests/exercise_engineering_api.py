@@ -4,18 +4,16 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'worker-node'))
 from runner import Node,load_env,FILES
 root=Path(__file__).resolve().parents[1]
-parser=argparse.ArgumentParser();parser.add_argument('--url',default='http://127.0.0.1:5173');parser.add_argument('--cases',nargs='+',default=['beam','slider','fourbar']);args=parser.parse_args();load_env(root/'.env.node');n=Node(args.url)
+import os
+folder=Path(os.environ.get('FORMA_DATA_DIR',root/'forma-data'))
+if not os.environ.get('FORMA_WORKER_TOKEN'):os.environ['FORMA_WORKER_TOKEN']=(folder/'.worker-token').read_text().strip()
+parser=argparse.ArgumentParser();parser.add_argument('--url',default='http://127.0.0.1:5173');parser.add_argument('--cases',nargs='+',default=['beam','slider','fourbar']);args=parser.parse_args();n=Node(args.url)
 evidence={}
-for _ in range(30):
-    catalog=n.request('GET','models')
-    if catalog['models'].get('codex') and catalog['models'].get('claude'):break
-    time.sleep(1)
-assert len(catalog['models'].get('codex',[]))>1
-assert len(catalog['models'].get('claude',[]))>1
-print('Live catalogs:',{k:len(v) for k,v in catalog['models'].items()},flush=True)
+catalog=n.request('GET','models')
+print('Configured catalogs:',{k:len(v) for k,v in catalog['models'].items()},flush=True)
 for name in args.cases:
     spec=json.loads((root/'public/benchmarks'/f'{name}.json').read_text());p=n.request('POST','projects',json={'title':spec['name']})
-    rejected=n.client.post('/api/projects/'+p['id']+'/jobs',json={'provider':'codex','model':'not-a-real-model','prompt':'test'})
+    rejected=n.client.post('/api/projects/'+p['id']+'/jobs',json={'provider':'local','model':'not-a-real-model','prompt':'test'})
     assert rejected.status_code==409,rejected.text
     job=n.request('POST','projects/'+p['id']+'/jobs',json={'provider':'manual','model':'','spec':spec})
     stage=None

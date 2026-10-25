@@ -29,6 +29,11 @@ def run_command(cmd,prompt,cwd,timeout=300):
         try:p.communicate(timeout=5)
         except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.communicate()
         raise RuntimeError('Модель не ответила за 5 минут')
+    except KeyboardInterrupt:
+        os.killpg(p.pid,signal.SIGTERM)
+        try:p.communicate(timeout=3)
+        except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.communicate()
+        raise
     if p.returncode: raise RuntimeError('CLI-провайдер завершился с ошибкой. Проверь вход и доступность модели. '+err[-350:])
     return out
 
@@ -37,11 +42,13 @@ def generate(provider,model,prompt,previous,feedback):
     full=SYSTEM+'\nСХЕМА:\n'+schema+'\nЗАДАЧА:\n'+prompt
     if previous:full+='\nТЕКУЩАЯ СПЕЦИФИКАЦИЯ:\n'+json.dumps(previous,ensure_ascii=False)
     if feedback:full+='\nОШИБКИ ПРЕДЫДУЩЕЙ ПОПЫТКИ:\n'+feedback
+    from provider_config import profile
+    config=profile(provider)
     if provider in ('codex','claude'):
         with tempfile.TemporaryDirectory(prefix='forma-model-') as folder:
             if provider=='codex':
                 dest=Path(folder)/'result.json'
-                cmd=['codex','exec','--ignore-user-config','--skip-git-repo-check','--ephemeral','--sandbox','read-only','-C',folder,'-m',model or 'gpt-6-astra','-o',str(dest),'-']
+                cmd=['codex','exec','--ignore-user-config','--skip-git-repo-check','--ephemeral','--sandbox','read-only','-C',folder,'-m',model,'-o',str(dest),'-']
                 run_command(cmd,full,folder)
                 if not dest.exists():raise RuntimeError('Codex не вернул финальный ответ')
                 result=dest.read_text()
@@ -49,32 +56,32 @@ def generate(provider,model,prompt,previous,feedback):
                 cmd=['claude','-p','--safe-mode','--tools','','--strict-mcp-config','--mcp-config','{"mcpServers":{}}','--no-session-persistence','--output-format','text']
                 if model:cmd+=['--model',model]
                 result=run_command(cmd,full,folder)
-    elif provider=='compatible':
-        base=os.environ.get('FORMA_LLM_BASE_URL','').rstrip('/')
-        if not base:raise RuntimeError('FORMA_LLM_BASE_URL не настроен')
+    elif provider in ('api','local'):
+        base=config.get('base_url','').rstrip('/')
+        if not base:raise RuntimeError('Адрес API модели не настроен')
         headers={}
-        if os.environ.get('FORMA_LLM_API_KEY'):headers['Authorization']='Bearer '+os.environ['FORMA_LLM_API_KEY']
+        if config.get('api_key'):headers['Authorization']='Bearer '+config['api_key']
         with httpx.Client(timeout=300) as c:
-            r=c.post(base+'/chat/completions',headers=headers,json={'model':model or os.environ.get('FORMA_LLM_MODEL',''),'messages':[{'role':'system','content':SYSTEM},{'role':'user','content':full}],'temperature':0.1});r.raise_for_status();result=r.json()['choices'][0]['message']['content']
+            r=c.post(base+'/chat/completions',headers=headers,json={'model':model or config.get('model',''),'messages':[{'role':'system','content':SYSTEM},{'role':'user','content':full}],'temperature':0.1});r.raise_for_status();result=r.json()['choices'][0]['message']['content']
     else:raise ValueError('Неизвестный провайдер')
     return clean_json(result)
 
 class Node:
     def __init__(self,url):
         headers={'Authorization':'Bearer '+os.environ['FORMA_WORKER_TOKEN']}
-        if os.environ.get('FORMA_SITES_TOKEN') and url.rstrip('/')==os.environ.get('FORMA_URL','').rstrip('/'):
-            headers['OAI-Sites-Authorization']='Bearer '+os.environ['FORMA_SITES_TOKEN']
         self.client=httpx.Client(base_url=url.rstrip('/'),headers=headers,timeout=60,follow_redirects=False)
         self.id=hashlib.sha256(platform.node().encode()).hexdigest()[:16]
         self.catalog=None;self.catalog_at=0;self.catalog_lock=threading.Lock()
     def request(self,method,path,**kwargs):
         r=self.client.request(method,'/api/'+path,**kwargs)
-        if r.is_redirect:raise RuntimeError('Сервис требует вход: настрой FORMA_SITES_TOKEN для приватного сайта.')
+        if r.is_redirect:raise RuntimeError('Локальный сервер вернул неожиданный редирект.')
         r.raise_for_status();return r.json()
     def heartbeat(self):
-        providers=[p for p in ['codex','claude'] if shutil.which(p)]
-        if os.environ.get('FORMA_LLM_BASE_URL'):providers.append('compatible')
-        state=self.request('POST','worker/heartbeat',json={'id':self.id,'name':platform.node(),'capabilities':{'providers':providers,'cad':'CadQuery '+__import__('cadquery').__version__,'engineering_version':2,'catalog':self.catalog}})
+        from provider_config import read_config
+        config=read_config()
+        providers=[p for p in ['codex','claude'] if config.get(p,{}).get('enabled') and shutil.which(p)]
+        providers += [p for p in ['api','local'] if config.get(p,{}).get('enabled') and config[p].get('base_url')]
+        state=self.request('POST','worker/heartbeat',json={'id':self.id,'name':'Локальный CAD-узел','capabilities':{'providers':providers,'cad':'CadQuery '+__import__('cadquery').__version__,'engineering_version':2,'catalog':self.catalog}})
         if state.get('refresh_models'):threading.Thread(target=self.refresh_catalog,daemon=True).start()
     def refresh_catalog(self):
         if not self.catalog_lock.acquire(blocking=False):return
@@ -97,7 +104,7 @@ class Node:
                     # A design model may not rewrite them to make its checks turn green.
                     if previous and previous.get('engineering') is not None:
                         spec['engineering']=previous['engineering']
-                    target=ROOT/'worker-data'/job['id']/str(attempt);target.mkdir(parents=True,exist_ok=True);(target/'input.json').write_text(json.dumps(spec,ensure_ascii=False))
+                    target=Path(os.environ.get('FORMA_WORK_DIR',ROOT/'forma-data/cad-work'))/job['id']/str(attempt);target.mkdir(parents=True,exist_ok=True);(target/'input.json').write_text(json.dumps(spec,ensure_ascii=False))
                     self.request('POST',base+'/stage',headers=lease,json={'stage':'Построение B-Rep и проверка сборки'})
                     # Kernel has a process-level timeout. No generated Python is executed.
                     run_command([sys.executable,str(Path(__file__).with_name('cad.py')),str(target/'input.json'),str(target)],'',str(ROOT),timeout=300)
@@ -143,4 +150,8 @@ class Node:
                 time.sleep(10)
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--url');parser.add_argument('--once',action='store_true');parser.add_argument('--env',default=str(ROOT/'.env.node'));args=parser.parse_args();load_env(Path(args.env));Node(args.url or os.environ.get('FORMA_URL','http://localhost:5173')).loop(args.once)
+    def stop_signal(_signum,_frame):raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM,stop_signal)
+    parser=argparse.ArgumentParser();parser.add_argument('--url');parser.add_argument('--once',action='store_true');parser.add_argument('--env');args=parser.parse_args();
+    if args.env:load_env(Path(args.env))
+    Node(args.url or os.environ.get('FORMA_URL','http://localhost:5173')).loop(args.once)

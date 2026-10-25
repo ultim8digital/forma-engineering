@@ -1,4 +1,3 @@
-"use client";
 import {
   useCallback,
   useEffect,
@@ -41,6 +40,7 @@ const Viewport = lazy(() => import("./Viewport"));
 import { SAMPLE, specSchema, type PartSpec } from "@/lib/contracts";
 import type { EngineeringResults, ModelCatalog } from "@/lib/engineering";
 import EngineeringPanel from "./EngineeringPanel";
+import ProviderSettings from "./ProviderSettings";
 type CheckResult = { name: string; passed: boolean; detail: string };
 type Report = {
   passed: boolean;
@@ -87,7 +87,8 @@ async function api<T>(path: string, body?: unknown, method?: string) {
 const names: Record<string, string> = {
   codex: "Codex",
   claude: "Claude Code",
-  compatible: "Свой API",
+  api: "Свой API",
+  local: "Локальная модель",
   manual: "CAD-движок",
 };
 export default function Studio() {
@@ -106,8 +107,8 @@ export default function Studio() {
     [wire, setWire] = useState(false),
     [view, setView] = useState("iso"),
     [prompt, setPrompt] = useState(""),
-    [provider, setProvider] = useState("codex"),
-    [model, setModel] = useState("gpt-6-astra"),
+    [provider, setProvider] = useState("local"),
+    [model, setModel] = useState(""),
     [settings, setSettings] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -129,7 +130,11 @@ export default function Studio() {
   projectRef.current = project;
   const node = nodes.find((n) => Date.now() - n.seen_at < 45000);
   const availableModels = catalog?.models[provider] || [];
+  const firstAvailableModel = availableModels[0]?.id || "";
   const selectedModel = availableModels.find((m) => m.id === model);
+  useEffect(() => {
+    if (!model && firstAvailableModel) setModel(firstAvailableModel);
+  }, [model, firstAvailableModel]);
   const active = jobs.find((j) => ["queued", "running"].includes(j.status));
   const fail = jobs[0]?.status === "failed" ? jobs[0] : undefined;
   const note = (text: string) => {
@@ -191,11 +196,11 @@ export default function Studio() {
   useEffect(() => {
     try {
       const saved = JSON.parse(
-        localStorage.getItem("forma-model-v1") || "null",
+        localStorage.getItem("forma-model-v3") || "null",
       );
       if (
         saved &&
-        ["codex", "claude", "compatible"].includes(saved.provider) &&
+        ["codex", "claude", "api", "local"].includes(saved.provider) &&
         typeof saved.model === "string"
       ) {
         setProvider(saved.provider);
@@ -206,7 +211,7 @@ export default function Studio() {
   useEffect(() => {
     try {
       localStorage.setItem(
-        "forma-model-v1",
+        "forma-model-v3",
         JSON.stringify({ provider, model }),
       );
     } catch {}
@@ -350,20 +355,9 @@ export default function Studio() {
   function changeProvider(value: string) {
     setProvider(value);
     const list = catalog?.models[value] || [];
-    setModel(
-      list.find(
-        (m) =>
-          m.id ===
-          (value === "codex"
-            ? "gpt-6-astra"
-            : value === "claude"
-              ? "opus"
-              : ""),
-      )?.id ||
-        list[0]?.id ||
-        "",
-    );
+    setModel(list[0]?.id || "");
   }
+
   async function loadEngineeringExample(kind: string) {
     try {
       setBusy(true);
@@ -1174,7 +1168,7 @@ export default function Studio() {
                     className="send-button"
                     title="Спроектировать"
                     onClick={() => submit()}
-                    disabled={busy || !!active || !prompt.trim()}
+                    disabled={busy || !!active || !prompt.trim() || !model || !node}
                   >
                     {busy || active ? (
                       <LoaderCircle className="spin" size={17} />
@@ -1203,7 +1197,7 @@ export default function Studio() {
             B-Rep / OpenCascade
           </span>
           <span>
-            FORMA <b>0.2</b>
+            FORMA LOCAL <b>0.3</b>
             <i />
             CAD · CAE · DRAWINGS
           </span>
@@ -1248,16 +1242,14 @@ export default function Studio() {
             </button>
             <div className="eyebrow">YOUR MODELS. YOUR COMPUTE.</div>
             <h2>Подключения</h2>
-            <p>Выбери, кто проектирует. Геометрию всегда строит CAD-узел.</p>
+            <p>Локальная студия без аккаунта. Модели подключаются отдельно.</p>
+            <ProviderSettings onSaved={() => { void refresh(); note("Подключения сохранены локально"); }} />
             <div className="provider-options">
               {[
-                ["codex", "Codex", "Локальный вход ChatGPT"],
-                ["claude", "Claude Code", "Локальный вход Anthropic"],
-                [
-                  "compatible",
-                  "Совместимый API",
-                  "LM Studio, Ollama или свой сервер",
-                ],
+                ["local", "Локальная модель", "Ollama, LM Studio или локальный сервер"],
+                ["api", "Собственный API", "Твой сервер и API-ключ"],
+                ["codex", "Codex CLI", "Отдельно установленный и авторизованный CLI"],
+                ["claude", "Claude Code", "Отдельно установленный и авторизованный CLI"],
               ].map(([v, title, desc]) => (
                 <button
                   className={provider === v ? "selected" : ""}
@@ -1304,7 +1296,9 @@ export default function Studio() {
                 <br />
                 {selectedModel.availability === "verified"
                   ? "На этой модели уже выполнен запрос FORMA."
-                  : "Модель объявлена провайдером; успешный запрос ещё не проверен."}
+                  : selectedModel.availability === "configured"
+                    ? "Модель задана вручную; успешный запрос ещё не проверен."
+                    : "Модель объявлена провайдером; успешный запрос ещё не проверен."}
               </p>
             )}
             <div className="catalog-actions">
@@ -1335,7 +1329,7 @@ export default function Studio() {
               <Cpu size={20} />
               <div>
                 <strong>
-                  {node ? "Узел подключён" : "Вычислительный узел не подключён"}
+                  {node ? "Локальный узел подключён" : "Вычислительный узел не подключён"}
                 </strong>
                 <small>
                   {node
@@ -1345,19 +1339,19 @@ export default function Studio() {
               </div>
             </div>
             <code className="code-block">
-              .venv/bin/python worker-node/runner.py
+              npm start
             </code>
             <p className="small-copy">
-              Вход в Codex / Claude выполняется в их CLI на узле. Ключи API
-              хранятся в окружении узла. FORMA не получает пароль от подписки.
+              Подключения включаются явно. Без модели доступны ручное редактирование,
+              CAD-построение и инженерные расчёты. Данные и ключи хранятся локально.
             </p>
             <details>
               <summary>API и подключение внешнего агента</summary>
               <p>
                 REST API: <code>/api/projects</code>,{" "}
                 <code>/api/projects/:id/jobs</code>. MCP:{" "}
-                <code>worker-node/mcp_server.py</code>. Для приватного сайта
-                также нужен сервисный доступ Sites.
+                <code>worker-node/mcp_server.py</code>. Сервер доступен только
+                на этом компьютере. Внешний аккаунт для доступа не нужен.
               </p>
               <button
                 className="button"

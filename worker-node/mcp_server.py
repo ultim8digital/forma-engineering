@@ -3,9 +3,9 @@ import json, os, sys
 from pathlib import Path
 import httpx
 from runner import load_env
-load_env(Path(__file__).resolve().parent.parent/'.env.node')
+folder=Path(os.environ.get('FORMA_DATA_DIR',Path(__file__).resolve().parent.parent/'forma-data'))
+if not os.environ.get('FORMA_WORKER_TOKEN') and (folder/'.worker-token').exists():os.environ['FORMA_WORKER_TOKEN']=(folder/'.worker-token').read_text().strip()
 HEADERS={'Authorization':'Bearer '+(os.environ.get('FORMA_AGENT_TOKEN') or os.environ.get('FORMA_WORKER_TOKEN',''))}
-if os.environ.get('FORMA_SITES_TOKEN'):HEADERS['OAI-Sites-Authorization']='Bearer '+os.environ['FORMA_SITES_TOKEN']
 client=httpx.Client(base_url=os.environ.get('FORMA_URL','http://localhost:5173'),headers=HEADERS,timeout=30)
 TOOLS=[{'name':'forma_list_projects','description':'Список CAD-проектов и состояние вычислительного узла.','inputSchema':{'type':'object','properties':{},'additionalProperties':False}}, {'name':'forma_create_project','description':'Создать инженерный проект.','inputSchema':{'type':'object','properties':{'title':{'type':'string'}},'required':['title'],'additionalProperties':False}}, {'name':'forma_get_project','description':'Получить версии, CAD-спецификацию и проверки проекта.','inputSchema':{'type':'object','properties':{'project_id':{'type':'string'}},'required':['project_id'],'additionalProperties':False}}, {'name':'forma_build','description':'Построить деталь или сборку из декларативной CAD-спецификации. Получи JSON Schema через forma_spec_schema. Задача асинхронная; проверь forma_get_job.','inputSchema':{'type':'object','properties':{'project_id':{'type':'string'},'spec':{'type':'object'}},'required':['project_id','spec'],'additionalProperties':False}}, {'name':'forma_get_job','description':'Статус асинхронного CAD-построения.','inputSchema':{'type':'object','properties':{'job_id':{'type':'string'}},'required':['job_id'],'additionalProperties':False}}, {'name':'forma_spec_schema','description':'Полная JSON Schema поддерживаемых CAD-операций и сборок.','inputSchema':{'type':'object','properties':{},'additionalProperties':False}}]
 TOOLS += [
@@ -16,7 +16,7 @@ def api(method,path,body=None):
     r=client.request(method,'/api/'+path,json=body);r.raise_for_status();return r.json()
 def dispatch(msg):
     method=msg.get('method');params=msg.get('params',{})
-    if method=='initialize':return {'protocolVersion':'2024-11-05','capabilities':{'tools':{}},'serverInfo':{'name':'forma-engineering','version':'0.2.0'}}
+    if method=='initialize':return {'protocolVersion':'2024-11-05','capabilities':{'tools':{}},'serverInfo':{'name':'forma-engineering','version':'0.3.0'}}
     if method=='ping':return {}
     if method=='tools/list':return {'tools':TOOLS}
     if method=='tools/call':

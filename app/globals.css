@@ -2622,3 +2622,13 @@ p {
 .project-name > svg {
   flex-shrink: 0;
 }
+
+/* Local connection settings */
+.local-provider-settings { margin: 18px 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #f8faff; }
+.local-provider-settings summary { cursor: pointer; font-weight: 600; }
+.local-provider-settings fieldset { min-width: 0; border: 0; margin: 0; padding: 0; }
+.provider-config { padding: 14px 0; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.provider-config .field-label { display: grid; gap: 6px; margin: 12px 0; }
+.provider-config input:not([type=checkbox]) { width: 100%; min-width: 0; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 7px; }
+.provider-toggle { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-weight: 600; }
+.provider-toggle input { accent-color: var(--blue); }

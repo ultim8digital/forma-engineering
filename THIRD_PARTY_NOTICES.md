@@ -2,12 +2,7 @@
 
 The MIT license in the repository root applies to original FORMA code. It does not replace the licenses of dependencies or vendored code. Preserve their notices when redistributing source or binaries.
 
-Vendored notices included in this repository:
-
-- Sites Vite plugin: [scripts/vite/sites-vite-plugin.LICENSE](scripts/vite/sites-vite-plugin.LICENSE), copyright OpenAI.
-- shadcn Tailwind stylesheet: [vendor/shadcn-tailwind-4.13.0.LICENSE.md](vendor/shadcn-tailwind-4.13.0.LICENSE.md).
-
-The runtime includes a CAD and numerical stack with its own upstream license terms: CadQuery, OpenCascade/OCP, Gmsh, NumPy, SciPy, ReportLab, svglib, ezdxf, matplotlib and their dependencies. JavaScript dependencies include React, Three.js, Vinext, Vite, Cloudflare tooling and the optional Claude Agent SDK. Consult the license files shipped with the installed versions before redistributing a packaged application, runtime or container. In particular, the root MIT license does not make all of the CAD dependencies MIT-licensed.
+The runtime includes a CAD and numerical stack with its own upstream license terms: CadQuery, OpenCascade/OCP, Gmsh, NumPy, SciPy, ReportLab, svglib, ezdxf, matplotlib and their dependencies. JavaScript dependencies include React, Three.js, Vite and the optional Claude Agent SDK. Consult the license files shipped with the installed versions before redistributing a packaged application, runtime or container. In particular, the root MIT license does not make all of the CAD dependencies MIT-licensed.
 
 Exact direct versions are recorded in `package-lock.json`, `worker-node/js/package-lock.json` and `worker-node/requirements.txt`. The Python file pins direct dependencies; it is not a complete transitive lockfile.
 
